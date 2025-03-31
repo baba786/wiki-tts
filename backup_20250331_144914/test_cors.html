@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CORS Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px; margin: 5px; }
+        #result { 
+            margin-top: 20px; 
+            padding: 10px; 
+            border: 1px solid #ccc; 
+            white-space: pre-wrap;
+            font-family: monospace;
+            background-color: #f8f8f8;
+        }
+    </style>
+</head>
+<body>
+    <h1>CORS Test</h1>
+    <div>
+        <button id="testGetButton">Test GET Request</button>
+        <button id="testPostButton">Test POST Request</button>
+        <button id="testAudioButton">Test Audio Generation</button>
+    </div>
+    <div id="result">Results will appear here...</div>
+
+    <script>
+        const resultDiv = document.getElementById('result');
+        
+        // Test GET request
+        document.getElementById('testGetButton').addEventListener('click', function() {
+            resultDiv.textContent = 'Testing GET Request to root endpoint...';
+            
+            fetch('http://localhost:5000/')
+                .then(response => {
+                    resultDiv.textContent += '\nGot response from root: ' + response.status;
+                    return response.json();
+                })
+                .then(data => {
+                    resultDiv.textContent += '\nData: ' + JSON.stringify(data, null, 2);
+                })
+                .catch(error => {
+                    resultDiv.textContent += '\nError with GET request: ' + error.message;
+                });
+        });
+        
+        // Test POST request
+        document.getElementById('testPostButton').addEventListener('click', function() {
+            resultDiv.textContent = 'Testing POST Request to test-post endpoint...';
+            
+            fetch('http://localhost:5000/test-post', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    message: 'This is a test message',
+                    timestamp: new Date().toISOString()
+                })
+            })
+            .then(response => {
+                resultDiv.textContent += '\nGot response from test-post: ' + response.status;
+                return response.json();
+            })
+            .then(data => {
+                resultDiv.textContent += '\nData: ' + JSON.stringify(data, null, 2);
+            })
+            .catch(error => {
+                resultDiv.textContent += '\nError with POST request: ' + error.message;
+            });
+        });
+        
+        // Test Audio Generation
+        document.getElementById('testAudioButton').addEventListener('click', function() {
+            resultDiv.textContent = 'Testing Audio Generation...';
+            
+            fetch('http://localhost:5000/generate-audio', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    text: 'This is a test of the audio generation system.'
+                })
+            })
+            .then(response => {
+                resultDiv.textContent += '\nGot response from generate-audio: ' + response.status;
+                return response.json();
+            })
+            .then(data => {
+                resultDiv.textContent += '\nData: ' + JSON.stringify(data, null, 2);
+                
+                if (data.audio_url) {
+                    resultDiv.textContent += '\n\nTesting audio access...';
+                    const audioUrl = 'http://localhost:5000' + data.audio_url;
+                    resultDiv.textContent += '\nTrying to load: ' + audioUrl;
+                    
+                    const audio = new Audio(audioUrl);
+                    audio.oncanplaythrough = () => {
+                        resultDiv.textContent += '\nAudio loaded successfully!';
+                        audio.play();
+                    };
+                    audio.onerror = (e) => {
+                        resultDiv.textContent += '\nError loading audio: ' + (audio.error ? audio.error.message : 'Unknown error');
+                    };
+                }
+            })
+            .catch(error => {
+                resultDiv.textContent += '\nError with generate-audio: ' + error.message;
+            });
+        });
+    </script>
+</body>
+</html>
