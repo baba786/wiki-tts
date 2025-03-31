@@ -24,10 +24,18 @@ This will:
 
 ## How to Use
 
+### Search Mode
 1. Enter a topic in the search box and press "Search"
 2. The Wikipedia summary will be displayed
-3. Click "Generate Audio" to convert the summary to speech
+3. Click "Listen" to convert the summary to speech
 4. The audio will automatically play when ready
+
+### Random Mode (Wiki Shorts)
+1. Click the "Random Mode" button
+2. The app will fetch a random Wikipedia article
+3. Navigate through articles with "Previous", "Random", and "Next" buttons
+4. Click "Listen" on any article to hear it read aloud
+5. Switch back to search mode anytime
 
 ## Features
 

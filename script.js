@@ -12,8 +12,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const contentSection = document.getElementById('contentSection');
     const welcomeMessage = document.getElementById('welcomeMessage');
     const resultsCard = document.getElementById('resultsCard');
+    const navigationControls = document.getElementById('navigationControls');
+    const prevButton = document.getElementById('prevButton');
+    const nextButton = document.getElementById('nextButton');
+    
+    // Mode switching buttons (desktop and mobile)
+    const randomModeButton = document.getElementById('randomModeButton');
+    const searchModeButton = document.getElementById('searchModeButton');
+    const mobileSearchTab = document.getElementById('mobileSearchTab');
+    const mobileRandomTab = document.getElementById('mobileRandomTab');
     
     let currentSummary = '';
+    let articleHistory = [];
+    let currentArticleIndex = -1;
+    let isRandomMode = false;
     
     // Search Wikipedia when button is clicked
     searchButton.addEventListener('click', searchWikipedia);
@@ -28,8 +40,154 @@ document.addEventListener('DOMContentLoaded', () => {
     // Generate audio when button is clicked
     generateAudioButton.addEventListener('click', generateAudio);
     
+    // Navigation event listeners
+    prevButton.addEventListener('click', showPreviousArticle);
+    nextButton.addEventListener('click', fetchRandomArticle); // Next now fetches a new random article
+    
+    // Mode switchers - desktop
+    randomModeButton.addEventListener('click', () => switchMode('random'));
+    searchModeButton.addEventListener('click', () => switchMode('search'));
+    
+    // Mode switchers - mobile tabs
+    mobileRandomTab.addEventListener('click', () => switchMode('random'));
+    mobileSearchTab.addEventListener('click', () => switchMode('search'));
+    
     // Initialize focus on search input
     searchInput.focus();
+    
+    function switchMode(mode) {
+        const searchContainer = document.querySelector('.search-container');
+        const searchSection = document.querySelector('.search-section');
+        
+        if (mode === 'random') {
+            isRandomMode = true;
+            
+            // Update desktop buttons
+            randomModeButton.classList.add('active');
+            searchModeButton.classList.remove('active');
+            
+            // Update mobile tabs
+            mobileRandomTab.classList.add('active');
+            mobileSearchTab.classList.remove('active');
+            
+            // Only hide the search container, not the entire section (to keep mode switcher)
+            searchContainer.classList.add('disabled');
+            searchInput.disabled = true;
+            searchButton.disabled = true;
+            searchInput.placeholder = 'Random mode active...';
+            
+            // Hide welcome message immediately
+            welcomeMessage.classList.add('hidden');
+            
+            // Show navigation controls
+            navigationControls.classList.remove('hidden');
+            
+            if (articleHistory.length === 0) {
+                fetchRandomArticle();
+            } else {
+                // Show existing content immediately
+                contentSection.classList.remove('hidden');
+            }
+        } else {
+            isRandomMode = false;
+            
+            // Update desktop buttons
+            searchModeButton.classList.add('active');
+            randomModeButton.classList.remove('active');
+            
+            // Update mobile tabs
+            mobileSearchTab.classList.add('active');
+            mobileRandomTab.classList.remove('active');
+            
+            // Show search section
+            searchSection.classList.remove('hidden');
+            searchContainer.classList.remove('disabled');
+            searchInput.disabled = false;
+            searchButton.disabled = false;
+            
+            // Hide navigation controls
+            navigationControls.classList.add('hidden');
+            
+            // Clear content to focus on search
+            contentSection.classList.add('hidden');
+            welcomeMessage.classList.remove('hidden');
+            
+            // Reset search field
+            searchInput.value = '';
+            searchInput.placeholder = 'Search any topic...';
+            searchInput.focus();
+        }
+    }
+    
+    function fetchRandomArticle() {
+        // Reset UI and show spinner
+        welcomeMessage.classList.add('hidden');
+        contentSection.classList.add('hidden');
+        searchSpinner.classList.remove('hidden');
+        generateAudioButton.disabled = true;
+        audioPlayer.classList.add('hidden');
+        
+        // Fetch a random Wikipedia article
+        fetch('https://en.wikipedia.org/api/rest_v1/page/random/summary')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch random article');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Update UI with results
+                displayArticle(data);
+                
+                // Add to history
+                articleHistory.push(data);
+                currentArticleIndex = articleHistory.length - 1;
+                
+                // Update navigation buttons
+                updateNavigationButtons();
+            })
+            .catch(error => {
+                // Handle errors
+                articleTitle.textContent = 'Error';
+                summaryElement.textContent = `Could not fetch random article: ${error.message}`;
+                generateAudioButton.disabled = true;
+                
+                // Hide spinner and show content with error message
+                searchSpinner.classList.add('hidden');
+                contentSection.classList.remove('hidden');
+            });
+    }
+    
+    function showPreviousArticle() {
+        if (currentArticleIndex > 0) {
+            currentArticleIndex--;
+            displayArticle(articleHistory[currentArticleIndex]);
+            updateNavigationButtons();
+        }
+    }
+    
+    function updateNavigationButtons() {
+        // Previous button is only enabled if we have history to go back to
+        prevButton.disabled = currentArticleIndex <= 0;
+        // Next button is always enabled in random mode
+        nextButton.disabled = false;
+    }
+    
+    function displayArticle(data) {
+        articleTitle.textContent = data.title;
+        summaryElement.textContent = data.extract;
+        currentSummary = data.extract;
+        generateAudioButton.disabled = false;
+        
+        // Hide spinner and show content
+        searchSpinner.classList.add('hidden');
+        contentSection.classList.remove('hidden');
+        
+        // In random mode, show the navigation controls
+        if (isRandomMode) {
+            navigationControls.classList.remove('hidden');
+        }
+    }
     
     function searchWikipedia() {
         const searchTerm = searchInput.value.trim();
@@ -39,6 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Reset UI and show spinner
         welcomeMessage.classList.add('hidden');
         contentSection.classList.add('hidden');
+        navigationControls.classList.add('hidden'); // Hide navigation in search mode
         searchSpinner.classList.remove('hidden');
         generateAudioButton.disabled = true;
         audioPlayer.classList.add('hidden');
@@ -52,15 +211,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 return response.json();
             })
             .then(data => {
-                // Update UI with results
-                articleTitle.textContent = data.title;
-                summaryElement.textContent = data.extract;
-                currentSummary = data.extract;
-                generateAudioButton.disabled = false;
+                displayArticle(data);
                 
-                // Hide spinner and show content
-                searchSpinner.classList.add('hidden');
-                contentSection.classList.remove('hidden');
+                // If in search mode, we don't add to history
+                if (isRandomMode) {
+                    articleHistory.push(data);
+                    currentArticleIndex = articleHistory.length - 1;
+                    updateNavigationButtons();
+                }
             })
             .catch(error => {
                 // Handle errors
@@ -82,6 +240,12 @@ document.addEventListener('DOMContentLoaded', () => {
         audioStatus.textContent = 'Generating audio with Coqui TTS. This may take a moment...';
         audioStatus.classList.add('processing');
         generateAudioButton.disabled = true;
+        
+        // If in random mode, disable navigation during audio generation
+        if (isRandomMode) {
+            prevButton.disabled = true;
+            nextButton.disabled = true;
+        }
         
         // For debugging - try a simple test first
         fetch('http://localhost:5000/')
@@ -141,6 +305,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 
                 generateAudioButton.disabled = false;
+                
+                // Re-enable navigation if in random mode
+                if (isRandomMode) {
+                    updateNavigationButtons();
+                }
             })
             .catch(error => {
                 console.error('Error generating audio:', error);
@@ -155,6 +324,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             console.error('Retry also failed:', retryError);
                             audioStatus.textContent = `TTS service error. Using fallback speech.`;
                             generateAudioButton.disabled = false;
+                            
+                            // Re-enable navigation if in random mode
+                            if (isRandomMode) {
+                                updateNavigationButtons();
+                            }
                             
                             // Only use fallback after retry also fails
                             const utterance = new SpeechSynthesisUtterance(shortText);

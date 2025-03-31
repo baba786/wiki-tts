@@ -20,6 +20,21 @@
     --transition: all 0.3s ease;
 }
 
+/* Results section with better spacing when search is hidden */
+.results-section {
+    transition: margin-top 0.3s ease;
+}
+
+/* When search is hidden, add more space at top */
+.search-section.hidden + .results-section {
+    margin-top: 20px;
+}
+
+/* Make navigation controls slightly more prominent in random mode */
+.search-section.hidden ~ .results-section .navigation-controls {
+    padding: 20px 0;
+}
+
 body {
     font-family: 'Roboto', sans-serif;
     line-height: 1.6;
@@ -74,11 +89,53 @@ h1 {
     font-weight: 300;
 }
 
-/* Search section */
+/* Search section with transitions */
 .search-section {
     margin-bottom: 30px;
+    transition: opacity 0.3s ease, height 0.3s ease;
 }
 
+/* Mode switch */
+.mode-switch {
+    display: flex;
+    justify-content: center;
+    margin-top: 15px;
+    gap: 10px;
+}
+
+.mode-button {
+    padding: 8px 15px;
+    border-radius: var(--rounded);
+    border: 1px solid var(--border-color);
+    background: var(--card-background);
+    color: var(--text-light);
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+}
+
+.mode-button i {
+    margin-right: 8px;
+}
+
+.mode-button.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.mode-button:hover:not(.active) {
+    background: #f1f5f9;
+}
+
+/* Mode switch spacing */
+.mode-switch {
+    margin-bottom: 15px;
+}
+
+/* Search container styling */
 .search-container {
     display: flex;
     align-items: center;
@@ -87,6 +144,13 @@ h1 {
     box-shadow: var(--shadow);
     padding: 5px 5px 5px 20px;
     position: relative;
+    transition: opacity 0.3s ease, background-color 0.3s ease;
+}
+
+.search-container.disabled {
+    opacity: 0.6;
+    background-color: #f1f5f9;
+    pointer-events: none;
 }
 
 .search-icon {
@@ -239,6 +303,46 @@ button:disabled {
     margin-bottom: 30px;
 }
 
+/* Navigation controls */
+.navigation-controls {
+    display: flex;
+    justify-content: space-between;
+    margin: 20px 0;
+    padding: 15px 0;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.nav-button {
+    display: flex;
+    align-items: center;
+    padding: 10px 20px;
+    border-radius: var(--rounded);
+    border: none;
+    background: var(--primary-color);
+    color: white;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 15px;
+    min-width: 140px;
+    justify-content: center;
+}
+
+.nav-button i {
+    margin-right: 8px;
+    margin-left: 8px;
+}
+
+.nav-button:hover {
+    background: var(--primary-dark);
+}
+
+.nav-button:disabled {
+    background-color: #e2e8f0;
+    color: #94a3b8;
+    cursor: not-allowed;
+}
+
 /* Audio player */
 .audio-player {
     margin-top: 20px;
@@ -294,9 +398,55 @@ footer {
     font-size: 14px;
 }
 
+/* Mobile Tabs - using original but keeping the tabs structure */
+.mobile-tabs {
+    display: none; /* Hidden by default, shown on mobile */
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: white;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    padding: 10px;
+    justify-content: space-around;
+}
+
+.tab-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    border: none;
+    background: transparent;
+    color: var(--text-light);
+    font-size: 14px;
+    cursor: pointer;
+    transition: var(--transition);
+    width: 100%;
+    border-radius: var(--rounded);
+}
+
+.tab-button i {
+    font-size: 20px;
+    margin-bottom: 5px;
+}
+
+.tab-button.active {
+    color: var(--primary-color);
+    background-color: rgba(58, 134, 255, 0.1);
+}
+
 /* Helper classes */
 .hidden {
     display: none;
+    opacity: 0;
+}
+
+/* Transitions */
+.search-container, .mode-switch, .navigation-controls, .tagline {
+    transition: all 0.3s ease;
 }
 
 /* Responsive adjustments */
@@ -321,5 +471,50 @@ footer {
     #articleTitle {
         margin-right: 0;
         margin-bottom: 15px;
+    }
+    
+    /* Show mobile tabs, hide desktop mode switch */
+    .mobile-tabs {
+        display: flex;
+    }
+    
+    .desktop-mode-switch {
+        display: none;
+    }
+    
+    /* Add padding at the bottom to account for fixed tabs */
+    main {
+        padding-bottom: 70px;
+    }
+    
+    footer {
+        padding-bottom: 70px;
+    }
+    
+    /* Make navigation buttons more touch-friendly */
+    .nav-button {
+        padding: 12px 20px;
+        font-size: 16px;
+    }
+}
+
+/* Tablet adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+    /* Some tablets might benefit from the mobile UI */
+    .mobile-tabs {
+        display: flex;
+    }
+    
+    .desktop-mode-switch {
+        display: none;
+    }
+    
+    /* Add padding at the bottom to account for fixed tabs */
+    main {
+        padding-bottom: 70px;
+    }
+    
+    footer {
+        padding-bottom: 70px;
     }
 }
