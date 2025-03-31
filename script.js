@@ -1,4 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Position the audio button correctly from the start
+    const articleControls = document.querySelector('.article-controls');
+    if (articleControls) {
+        articleControls.style.display = 'block';
+    }
     // DOM Elements
     const searchInput = document.getElementById('searchInput');
     const searchButton = document.getElementById('searchButton');
@@ -13,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const welcomeMessage = document.getElementById('welcomeMessage');
     const resultsCard = document.getElementById('resultsCard');
     const navigationControls = document.getElementById('navigationControls');
+
     const prevButton = document.getElementById('prevButton');
     const nextButton = document.getElementById('nextButton');
     
@@ -70,17 +76,23 @@ document.addEventListener('DOMContentLoaded', () => {
             mobileRandomTab.classList.add('active');
             mobileSearchTab.classList.remove('active');
             
-            // Only hide the search container, not the entire section (to keep mode switcher)
-            searchContainer.classList.add('disabled');
-            searchInput.disabled = true;
-            searchButton.disabled = true;
-            searchInput.placeholder = 'Random mode active...';
+
+random-summary
             
             // Hide welcome message immediately
             welcomeMessage.classList.add('hidden');
             
-            // Show navigation controls
+            // Apply shorts-mode styling to the card
+            resultsCard.classList.add('shorts-mode');
+            
+            // Show navigation controls but keep title hidden for a cleaner shorts-like experience
             navigationControls.classList.remove('hidden');
+            
+            // On mobile, disable body scrolling to create a more immersive shorts experience
+            if (isMobileDevice()) {
+                disableBodyScroll();
+                initSwipeHandlers();
+            }
             
             if (articleHistory.length === 0) {
                 fetchRandomArticle();
@@ -99,14 +111,24 @@ document.addEventListener('DOMContentLoaded', () => {
             mobileSearchTab.classList.add('active');
             mobileRandomTab.classList.remove('active');
             
+            // Remove shorts-mode styling
+            resultsCard.classList.remove('shorts-mode');
+            
             // Show search section
             searchSection.classList.remove('hidden');
-            searchContainer.classList.remove('disabled');
+            searchContainer.classList.remove('hidden');
             searchInput.disabled = false;
             searchButton.disabled = false;
             
-            // Hide navigation controls
+            // Hide navigation controls and random mode title
             navigationControls.classList.add('hidden');
+            randomModeTitle.classList.add('hidden');
+            
+            // Re-enable body scrolling and remove swipe handlers when exiting random mode
+            if (isMobileDevice()) {
+                enableBodyScroll();
+                removeSwipeHandlers();
+            }
             
             // Clear content to focus on search
             contentSection.classList.add('hidden');
@@ -120,6 +142,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function fetchRandomArticle() {
+        // Add animation class if in shorts mode and on mobile
+        if (isRandomMode && isMobileDevice() && !contentSection.classList.contains('hidden')) {
+            resultsCard.classList.add('animating-up');
+            
+            // Wait for animation to complete before fetching new content
+            setTimeout(() => {
+                resultsCard.classList.remove('animating-up');
+                fetchRandomArticleContent();
+            }, 300);
+        } else {
+            fetchRandomArticleContent();
+        }
+    }
+    
+    function fetchRandomArticleContent() {
         // Reset UI and show spinner
         welcomeMessage.classList.add('hidden');
         contentSection.classList.add('hidden');
@@ -136,15 +173,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 return response.json();
             })
             .then(data => {
-                // Update UI with results
-                displayArticle(data);
-                
                 // Add to history
                 articleHistory.push(data);
                 currentArticleIndex = articleHistory.length - 1;
                 
-                // Update navigation buttons
-                updateNavigationButtons();
+                // Update UI with results
+                if (isRandomMode && isMobileDevice()) {
+                    // First set opacity to 0 for all animated elements
+                    if (articleTitle) articleTitle.style.opacity = '0';
+                    if (summaryElement) summaryElement.style.opacity = '0';
+                    
+                    resultsCard.classList.add('animating-in');
+                    setTimeout(() => {
+                        displayArticle(data);
+                        updateNavigationButtons();
+                        
+                        // Animation will automatically reveal content
+                        // with cascading timing
+                        
+                        // Remove animation classes after complete
+                        setTimeout(() => {
+                            resultsCard.classList.remove('animating-in');
+                            // Reset opacities
+                            if (articleTitle) articleTitle.style.opacity = '';
+                            if (summaryElement) summaryElement.style.opacity = '';
+                        }, 1000);
+                    }, 50);
+                } else {
+                    displayArticle(data);
+                    updateNavigationButtons();
+                }
             })
             .catch(error => {
                 // Handle errors
@@ -160,9 +218,39 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function showPreviousArticle() {
         if (currentArticleIndex > 0) {
-            currentArticleIndex--;
-            displayArticle(articleHistory[currentArticleIndex]);
-            updateNavigationButtons();
+            // Add animation if in shorts mode on mobile
+            if (isRandomMode && isMobileDevice()) {
+                resultsCard.classList.add('animating-down');
+                
+                setTimeout(() => {
+                    resultsCard.classList.remove('animating-down');
+                    currentArticleIndex--;
+                    
+                    // First set opacity to 0 for all animated elements
+                    if (articleTitle) articleTitle.style.opacity = '0';
+                    if (summaryElement) summaryElement.style.opacity = '0';
+                    
+                    resultsCard.classList.add('animating-in');
+                    setTimeout(() => {
+                        displayArticle(articleHistory[currentArticleIndex]);
+                        updateNavigationButtons();
+                        
+                        // Animation will automatically reveal content with cascading timing
+                        
+                        // Remove animation classes after complete
+                        setTimeout(() => {
+                            resultsCard.classList.remove('animating-in');
+                            // Reset opacities
+                            if (articleTitle) articleTitle.style.opacity = '';
+                            if (summaryElement) summaryElement.style.opacity = '';
+                        }, 1000);
+                    }, 50);
+                }, 300);
+            } else {
+                currentArticleIndex--;
+                displayArticle(articleHistory[currentArticleIndex]);
+                updateNavigationButtons();
+            }
         }
     }
     
@@ -183,9 +271,18 @@ document.addEventListener('DOMContentLoaded', () => {
         searchSpinner.classList.add('hidden');
         contentSection.classList.remove('hidden');
         
-        // In random mode, show the navigation controls
-        if (isRandomMode) {
+        // In random mode on desktop, show the navigation controls
+        if (isRandomMode && !isMobileDevice()) {
             navigationControls.classList.remove('hidden');
+        } else if (isRandomMode && isMobileDevice()) {
+            // On mobile in random mode, hide navigation controls (we use swipe instead)
+            navigationControls.classList.add('hidden');
+            // No longer showing swipe hints
+        }
+        
+        // If in shorts mode and audio player is visible, position it appropriately
+        if (isRandomMode && !audioPlayer.classList.contains('hidden')) {
+            audioPlayer.classList.add('shorts-audio-player');
         }
     }
     
@@ -239,7 +336,15 @@ document.addEventListener('DOMContentLoaded', () => {
         audioPlayer.classList.remove('hidden');
         audioStatus.textContent = 'Generating audio with Coqui TTS. This may take a moment...';
         audioStatus.classList.add('processing');
-        generateAudioButton.disabled = true;
+        
+        // Don't disable the button, just show it's processing
+        generateAudioButton.classList.add('processing-audio');
+        
+        // If in random mode, disable navigation during audio generation
+        if (isRandomMode) {
+            prevButton.disabled = true;
+            nextButton.disabled = true;
+        }
         
         // If in random mode, disable navigation during audio generation
         if (isRandomMode) {
@@ -304,7 +409,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 });
                 
-                generateAudioButton.disabled = false;
+                // Remove the processing animation
+                generateAudioButton.classList.remove('processing-audio');
                 
                 // Re-enable navigation if in random mode
                 if (isRandomMode) {
@@ -343,4 +449,143 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     }
+
+    // Helper function to detect mobile devices
+    function isMobileDevice() {
+        return (window.innerWidth <= 768) || 
+               ('ontouchstart' in window) || 
+               (navigator.maxTouchPoints > 0) || 
+               (navigator.msMaxTouchPoints > 0);
+    }
+
+    // Variables for touch handling
+    let touchStartY = 0;
+    let touchEndY = 0;
+    let touchStartX = 0;
+    let touchEndX = 0;
+    let touchStartTime = 0;
+    let isSwiping = false;
+    const minSwipeDistance = 60; // Reduced to make swiping easier
+    const maxSwipeTime = 500; // Maximum time in ms for a swipe to be considered valid
+    const maxHorizontalMove = 50; // Maximum horizontal movement to still consider it a vertical swipe
+    
+    // Initialize swipe handlers
+    function initSwipeHandlers() {
+        // No longer showing swipe hints
+        // Just add touch event listeners
+        resultsCard.addEventListener('touchstart', handleTouchStart, { passive: false });
+        resultsCard.addEventListener('touchmove', handleTouchMove, { passive: false });
+        resultsCard.addEventListener('touchend', handleTouchEnd, { passive: false });
+        
+        // On mobile, hide the navigation buttons and use swipe instead
+        if (navigationControls) {
+            navigationControls.classList.add('hidden');
+        }
+        
+        // Add a class to the body to identify shorts mode
+        document.body.classList.add('shorts-mode-active');
+    }
+    
+    // Remove swipe handlers
+    function removeSwipeHandlers() {
+        resultsCard.removeEventListener('touchstart', handleTouchStart, { passive: false });
+        resultsCard.removeEventListener('touchmove', handleTouchMove, { passive: false });
+        resultsCard.removeEventListener('touchend', handleTouchEnd, { passive: false });
+        
+        // Hide swipe hints
+        swipeUpHint.classList.remove('visible');
+        swipeDownHint.classList.remove('visible');
+        
+        // Remove shorts mode class from body
+        document.body.classList.remove('shorts-mode-active');
+    }
+    
+    // Handle touch start event
+    function handleTouchStart(event) {
+        touchStartY = event.touches[0].clientY;
+        touchStartX = event.touches[0].clientX;
+        touchStartTime = new Date().getTime();
+        isSwiping = false;
+        
+        // Don't prevent default here to allow scrolling within summary
+    }
+    
+    // Handle touch move event (new)
+    function handleTouchMove(event) {
+        if (event.touches.length > 0) {
+            const currentY = event.touches[0].clientY;
+            const currentX = event.touches[0].clientX;
+            const deltaY = currentY - touchStartY;
+            const deltaX = Math.abs(currentX - touchStartX);
+            const summaryElement = document.querySelector('.shorts-mode .summary');
+            
+            // Check if this is looking like a vertical swipe (more vertical than horizontal)
+            if (Math.abs(deltaY) > 30 && deltaX < 30) {
+                // If we're at the top of content and swiping down, or bottom and swiping up
+                // then it's likely a shorts navigation swipe
+                const isAtTop = summaryElement.scrollTop <= 0;
+                const isAtBottom = summaryElement.scrollHeight - summaryElement.scrollTop <= summaryElement.clientHeight + 10;
+                
+                if ((isAtTop && deltaY > 0) || (isAtBottom && deltaY < 0)) {
+                    isSwiping = true;
+                    event.preventDefault(); // Prevent default only when we're sure it's a navigation swipe
+                }
+            }
+        }
+    }
+    
+    // Handle touch end event
+    function handleTouchEnd(event) {
+        touchEndY = event.changedTouches[0].clientY;
+        touchEndX = event.changedTouches[0].clientX;
+        const touchEndTime = new Date().getTime();
+        const touchDuration = touchEndTime - touchStartTime;
+        
+        // Only process as a swipe if timing is right and it wasn't a long press
+        if (touchDuration < maxSwipeTime) {
+            handleSwipe();
+        }
+    }
+    
+    // Process the swipe gesture
+    function handleSwipe() {
+        const swipeDistanceY = touchEndY - touchStartY;
+        const swipeDistanceX = Math.abs(touchEndX - touchStartX);
+        const summaryElement = document.querySelector('.shorts-mode .summary');
+        
+        // Only count as a swipe if vertical distance is significant and horizontal movement is minimal
+        if (Math.abs(swipeDistanceY) > minSwipeDistance && swipeDistanceX < maxHorizontalMove) {
+            const isAtTop = summaryElement.scrollTop <= 0;
+            const isAtBottom = summaryElement.scrollHeight - summaryElement.scrollTop <= summaryElement.clientHeight + 10;
+            
+            if (swipeDistanceY < 0 && (isAtBottom || isSwiping)) {
+                // Swipe up - next article
+                fetchRandomArticle();
+                return true;
+            } else if (swipeDistanceY > 0 && (isAtTop || isSwiping)) {
+                // Swipe down - previous article
+                if (currentArticleIndex > 0) {
+                    showPreviousArticle();
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    
+    // Show a swipe hint briefly
+    function showSwipeHint(hintElement) {
+        // Make the hint visible
+        hintElement.style.display = 'flex';
+        hintElement.classList.add('visible');
+        
+        // Hide after a short delay
+        setTimeout(() => {
+            hintElement.classList.remove('visible');
+            setTimeout(() => {
+                hintElement.style.display = 'none';
+            }, 300); // Match the CSS transition duration
+        }, 1200);
+    }
 });
+
